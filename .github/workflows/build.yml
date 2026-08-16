@@ -1,0 +1,36 @@
+name: Build DirtyBass VST3
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build VST3
+        run: cmake --build build --config Release --parallel
+
+      - name: Collect VST3
+        shell: pwsh
+        run: |
+          $vst = Get-ChildItem -Path build -Recurse -Filter "DirtyBass.vst3" | Select-Object -First 1
+          if (-not $vst) {
+            Write-Host "VST3 not found. Contents:"
+            Get-ChildItem build -Recurse | Select-Object FullName
+            exit 1
+          }
+          Compress-Archive -Path $vst.FullName -DestinationPath "DirtyBass-Windows-VST3.zip"
+
+      - name: Upload VST3 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DirtyBass-Windows-VST3
+          path: DirtyBass-Windows-VST3.zip
